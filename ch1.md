@@ -2,7 +2,7 @@
 
 ## Introductions
 
-Hi there! I'm Professor Franklin Risby. Pleased to make your acquaintance. We'll be spending some time together, as I'm supposed to teach you a bit about functional programming. But enough about me, what about you? I'm hoping that you're at least a bit familiar with the JavaScript language, have a teensy bit of Object-Oriented experience, and fancy yourself a working class programmer. You don't need to have a PhD in Entomology, you just need to know how to find and kill some bugs.
+Hi there! I'm Professor Franklin Risby. Pleased to make your acquaintance. We'll be spending some time together, as I'm supposed to teach you a bit about functional programming. But enough about me, what about you? I'm hoping that you're at least a bit familiar with the Python language, have a teensy bit of Object-Oriented experience, and fancy yourself a working class programmer. You don't need to have a PhD in Entomology, you just need to know how to find and kill some bugs.
 
 I won't assume that you have any previous functional programming knowledge, because we both know what happens when you assume. I will, however, expect you to have run into some of the unfavorable situations that arise when working with mutable state, unrestricted side effects, and unprincipled design. Now that we've been properly introduced, let's get on with it.
 
@@ -18,28 +18,27 @@ I won't belabor you by listing each and every guideline I've heard throughout th
 
 Let's start with a touch of insanity. Here is a seagull application. When flocks conjoin they become a larger flock, and when they breed, they increase by the number of seagulls with whom they're breeding. Now, this is not intended to be good Object-Oriented code, mind you, it is here to highlight the perils of our modern, assignment based approach. Behold:
 
-```js
-var Flock = function(n) {
-  this.seagulls = n;
-};
+```python
+class Flock:
+    def __init__(self, n):
+        self.seagulls = n
 
-Flock.prototype.conjoin = function(other) {
-  this.seagulls += other.seagulls;
-  return this;
-};
+    def conjoin(self, other):
+        self.seagulls += other.seagulls
+        return self
 
-Flock.prototype.breed = function(other) {
-  this.seagulls = this.seagulls * other.seagulls;
-  return this;
-};
+    def breed(other):
+        self.seagulls = self.seagulls * other.seagulls
+        return self
 
-var flock_a = new Flock(4);
-var flock_b = new Flock(2);
-var flock_c = new Flock(0);
 
-var result = flock_a.conjoin(flock_c)
-    .breed(flock_b).conjoin(flock_a.breed(flock_b)).seagulls;
-//=> 32
+flock_a = Flock(4)
+flock_b = Flock(2)
+flock_c = Flock(0)
+
+result = flock_a.conjoin(flock_c)
+    .breed(flock_b).conjoin(flock_a.breed(flock_b)).seagulls
+# >>> 32
 ```
 
 Who on earth would craft such a ghastly abomination? It is unreasonably difficult to keep track of the mutating internal state. And, good heavens, the answer is even incorrect! It should have been `16`, but `flock_a` wound up permanently altered in the process. Poor `flock_a`. This is anarchy in the I.T.! This is wild animal arithmetic!
@@ -48,65 +47,72 @@ If you don't understand this program, it's okay, neither do I. The point to reme
 
 Let's try again, this time using a more functional approach:
 
-```js
-var conjoin = function(flock_x, flock_y) { return flock_x + flock_y; };
-var breed = function(flock_x, flock_y) { return flock_x * flock_y; };
+```python
 
-var flock_a = 4;
-var flock_b = 2;
-var flock_c = 0;
+def conjoin(flock_x, flock_y):
+    return flock_x + flock_y
 
-var result = conjoin(
-  breed(flock_b, conjoin(flock_a, flock_c)), breed(flock_a, flock_b)
-);
-//=>16
+def breed(flock_x, flock_y):
+    return flock_x * flock_y
+
+
+flock_a = 4
+flock_b = 2
+flock_c = 0
+
+result = conjoin(
+    breed(flock_b, conjoin(flock_a, flock_c)), breed(flock_a, flock_b)
+)
+# >>> 16
+
 ```
 
 Well, this time we got the right answer. With much less code. The function nesting is a tad confusing... (we'll remedy this situation in ch5). It's better, but let's dig a little bit deeper. There are benefits to calling a spade a spade. Had we scrutinized our custom functions more closely, we would have discovered that we're just working with simple addition (`conjoin`) and multiplication (`breed`).
 
 There's really nothing special at all about these two functions other than their names. Let's rename our custom functions to `multiply` and `add` in order to reveal their true identities.
 
-```js
-var add = function(x, y) { return x + y; };
-var multiply = function(x, y) { return x * y; };
+```python
+add = lambda x, y: x + y
+multiply = lambda x, y: x * y
 
-var flock_a = 4;
-var flock_b = 2;
-var flock_c = 0;
+flock_a = 4
+flock_b = 2
+flock_c = 0
 
-var result = add(
+result = add(
   multiply(flock_b, add(flock_a, flock_c)), multiply(flock_a, flock_b)
-);
-//=>16
+)
+# >>> 16
 ```
+
 And with that, we gain the knowledge of the ancients:
 
-```js
-// associative
-add(add(x, y), z) === add(x, add(y, z));
+```python
+# associative
+add(add(x, y), z) == add(x, add(y, z)
 
-// commutative
-add(x, y) === add(y, x);
+# commutative
+add(x, y) == add(y, x)
 
-// identity
-add(x, 0) === x;
+# identity
+add(x, 0) == x;
 
-// distributive
-multiply(x, add(y,z)) === add(multiply(x, y), multiply(x, z));
+# distributive
+multiply(x, add(y, z)) == add(multiply(x, y), multiply(x, z))
 ```
 
 Ah yes, those old faithful mathematical properties should come in handy. Don't worry if you didn't know them right off the top of your head. For a lot of us, it's been a while since we learned about these laws of arithmetic. Let's see if we can use these properties to simplify our little seagull program.
 
-```js
-// Original line
-add(multiply(flock_b, add(flock_a, flock_c)), multiply(flock_a, flock_b));
+```python
+# Original line
+add(multiply(flock_b, add(flock_a, flock_c)), multiply(flock_a, flock_b))
 
-// Apply the identity property to remove the extra add
-// (add(flock_a, flock_c) == flock_a)
-add(multiply(flock_b, flock_a), multiply(flock_a, flock_b));
+# Apply the identity property to remove the extra add
+# (add(flock_a, flock_c) == flock_a)
+add(multiply(flock_b, flock_a), multiply(flock_a, flock_b))
 
-// Apply distributive property to achieve our result
-multiply(flock_b, add(flock_a, flock_a));
+# Apply distributive property to achieve our result
+multiply(flock_b, add(flock_a, flock_a))
 ```
 
 Brilliant! We didn't have to write a lick of custom code other than our calling function. We include `add` and `multiply` definitions here for completeness, but there is really no need to write them - we surely have an `add` and `multiply` provided by some existing library.
